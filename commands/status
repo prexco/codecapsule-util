@@ -1,0 +1,41 @@
+#!/usr/bin/env bash
+
+commandAdd status cmdStatus
+
+cmdStatusHelp() {
+   cat <<EOF
+   status          Displays each repository\'s status.
+EOF
+}
+
+# Get a project status
+cmdStatus() {
+   projectForEach cmdStatusEach
+}
+
+# CmdEachProjectStatus is called for each project to check the commit status.
+# $1 = Project identifier
+# This needs always to return true - it cannot ever fail.
+cmdStatusEach() {
+   local path statusResult
+
+   path="$(getProjectConfig "$1" path)"
+
+   if [[ -z "$path" ]]; then
+      CapsuleStatus "$1: No path set."
+      return 0
+   fi
+
+   if [[ ! -d "$path" ]]; then
+      CapsuleStatus "$1: Not checked out."
+      return 0
+   fi
+
+   statusResult=$(cd "$path" ; git status)
+   if echo "$statusResult" | grep -q "^nothing to commit, working .* clean$"; then
+      CapsuleStatus "$1 : clean"
+   else
+      CapsuleStatus "$1 : dirty"
+      echo "$statusResult"
+   fi
+}

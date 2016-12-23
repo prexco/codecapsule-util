@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+# Adds a command to the list of available commands.
+# Commands are stored as separate global variables and the value is
+# the name of the function to call.
+# $1 = Name of the command a user can type in.
+# $2 = Function or command to call.
+# Returns nothing.
+commandAdd()
+{
+   printf -v "commandList_$1" "%s" "$2"
+}

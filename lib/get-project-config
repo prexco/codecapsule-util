@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+getProjectConfig()
+{
+   local ProjName
+   ProjName=$(ini-key-name "capsule_file" "$1" "$2")
+
+   if [[ -z "${!ProjName-}" ]]; then
+      ProjName=$(ini-key-name "capsule_file" "default" "$2")
+   fi
+
+   echo "${!ProjName-}"
+}

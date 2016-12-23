@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+# Calls the various help functions for each one of the commands
+# in order to assemble the help text.
+commandHelp()
+{
+   local command
+
+   for command in $(set | grep "^commandList_" | cut -d = -f 1 | sort); do
+      "${!command}Help"
+   done
+}

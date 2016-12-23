@@ -1,0 +1,137 @@
+#!/usr/bin/env bash
+
+commandAdd sync cmdSync
+
+cmdSyncHelp()
+{
+   cat <<EOF
+   sync            Syncronise local repositories with the remotes. This
+                   attempts to rebase and falls back to pull/push.
+EOF
+}
+
+# Syncronise projects
+cmdSync()
+{
+   projectForEach cmdSyncEach
+}
+
+# SyncEachProject is called for each project that should be syncronised.
+# If the project directory does not exist, it will perform a clone. After that
+# it always syncronises.
+# $1 = Project identifier
+# It will return true on success, no remote or no path as none of these are errors
+# that should skip all future work. Otherwise, it will return RepositorySyncSynchronise
+# return codes.
+cmdSyncEach()
+{
+   local path remote
+
+   path="$(getProjectConfig "$1" path)"
+
+   if [[ -z "$path" ]]; then
+      CapsuleStatus "No path set for $1"
+      return 0
+   fi
+
+   if [[ ! -d "$path" ]]; then
+      remote="$(getProjectConfig "$1" remote)"
+      if [[ -z "$remote" ]]; then
+         CapsuleStatus "No remote set for $1"
+         return 0
+      fi
+
+      CapsuleStatus "Cloning $1 into $path"
+      git clone "$remote" "$path"
+      cmdSyncSynchronize "$path"
+      return 0
+   fi
+
+   CapsuleStatus "Synchronising $1"
+   cmdSyncSynchronize "$path"
+}
+
+
+# Push changes to a remote repository.
+# Attempts to be a bit intelligent about this and will only push if there are
+# any commits locally that do not exist in the remote.
+# $1 = Remote's name and branch, i.e. remote/remote-branch
+# Returns nothing.
+cmdSyncPush()
+{
+   # Test to see if "@{push}" is supported.
+   if git log --oneline '@{push}..' > /dev/null 2>&1; then
+      # It is supported. Now check if there are any commits.
+      if [[ -n "$(git log --oneline '@{push}..')" ]]; then
+         git push
+      fi
+
+      return 0
+   fi
+
+   # Fall back to using the remote name and branch
+   if [[ -n "$(git log --oneline "$1..")" ]]; then
+      git push
+   fi
+}
+
+# Syncronises a git repository.
+# It will firstly run a fetch to get the history from the remote repository.
+# After that it will attempt to fast forward, rebase, or merge - in this
+# exact order. Finally, the submodules will be updated.
+# $1 = Project Name from the config
+# Returns true on success (0), or non-zero upon errors.
+cmdSyncSynchronize() {
+   (
+      local head ref remote remoteBranch remoteRef
+
+      cd "$1"
+      ref=$(git symbolic-ref HEAD)
+      head=${ref#refs/heads/}
+      remote=$(git config "branch.$head.remote" || echo "")
+
+      if [[ -z "$remote" ]]; then
+         cat <<EOF
+No remote is set for this branch.  Perhaps you should push it first?
+EOF
+         return 1
+      fi
+
+      remoteRef=$(git config "branch.$head.merge")
+      remoteBranch=${remoteRef#refs/heads/}
+
+      # Get the updated history of the Remote.
+      git fetch
+
+      # Attempt to just pull when no changes are there.
+      if [[ "$(git merge-base "$remote/$remoteBranch" HEAD)" == "$(git rev-parse HEAD)" ]]; then
+         git merge --ff "$remote/$remoteBranch"
+         git submodule update --init --recursive
+
+         return 0
+      fi
+
+      if git rebase "$remote/$remoteBranch"; then
+         # Rebase was successful.
+         cmdSyncPush "$remote/$remoteBranch"
+         git submodule update --init --recursive
+
+         return 0
+      fi
+
+      # Fall back to a merge and possibly have to deal with merge conflicts.
+      echo "It looks like the rebase has failed. Falling back to a standard merge."
+      git rebase --abort || git checkout "$head"
+
+      if git merge "$remote/$remoteBranch"; then
+         cmdSyncPush "$remote/$remoteBranch"
+         git submodule update --init --recursive
+
+         return 0
+      fi
+
+      echo ""
+      echo "Please resolve any merge conflicts, commit and then sync again."
+      return 2
+   )
+}

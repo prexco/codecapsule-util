@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+
+commandAdd init cmdInit
+
+cmdInitHelp() {
+   cat <<EOF
+   init URL        Initialise a directory as a group of repositories.
+                   The URL is the location of the git repository.
+EOF
+}

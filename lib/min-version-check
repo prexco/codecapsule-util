@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+# Verifies if the version of codecapsule is compatible with the version
+# of codecapsule-util.
+# Requires a minimum version variable (MinVersion) to be set.
+
+minVersion=2
+
+if [[ "$ProgramVersion" -lt "$minVersion" ]]; then
+   cat >&2 <<EOF
+$ProgramName requires version $minVersion to work.
+
+Sorry about this hassle, but need to upgrade your $ProgramName utility.
+You may download it again from the project website:
+   https://github.com/prexco/codecapsule.git
+
+EOF
+   exit 1
+fi

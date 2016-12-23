@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+# Loads the capsule file by sourcing it.
+# Returns 1 when no file is found; otherwise returns the return code generated
+# by the capsule script.
+CapsuleFileLoad()
+{
+   local CapsuleFile
+   CapsuleFile="$FlowDir/capsule/capsule.ini"
+
+   if [[ ! -f "$CapsuleFile" ]]; then
+      cat <<EOF
+Capsule file file is missing.
+Expected one at $CapsuleFile
+EOF
+      return 1
+   fi
+
+   ini-parse "capsule_file" "[.codecapsule/codecapsule-util]
+path=.codecapsule/codecapsule-util
+
+[.codecapsule/capsule]
+path=.codecapsule/capsule
+
+$(cat "$CapsuleFile")"
+}

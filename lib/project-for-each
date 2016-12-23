@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+# Iterates over each defined project and call a command.
+# $1 = The command to call.
+# The command is call with the path and source url, as in
+#       TheCommandToCall "some/path" "git@github.com:some/url"
+# Stops at the first error and returns the error code. When no
+# errors are encountered, it will return 0.
+
+projectForEach()
+{
+   local path pathVarName project remote remoteVarName
+
+   for project in "${capsule_file[@]}"; do
+      if [[ "$project" != "default" ]]; then
+         "$1" "$project"
+      fi
+   done
+}
